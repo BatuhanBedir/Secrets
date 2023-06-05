@@ -4,7 +4,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const options = {
     useNewUrlParser: true,
@@ -13,7 +14,6 @@ const options = {
 };
 
 const app = express();
-
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -48,29 +48,35 @@ app.get("/register",function(req,res){
 
 app.post("/register", async function(req, res) {
   try {
-    const newUser = new User({
-      email: req.body.username,
-      password: md5(req.body.password)
-    });
+    bcrypt.hash(req.body.password, saltRounds, async function(err, hash) {
+      if (err) {
+        throw err;
+      }
+      const newUser = new User({
+        email: req.body.username,
+        password: hash
+      });
 
-    await newUser.save();
-    res.render("secrets");
+      await newUser.save();
+      res.render("secrets");
+    });
   } catch (err) {
     console.log(err);
   }
 });
 
+
 app.post("/login",async function(req,res){
   const username = req.body.username;
-  const password = md5(req.body.password);
+  const password = req.body.password;
    
   const foundUser =await User.findOne({email: username})
   if(foundUser){
-    if(foundUser.password === password){
+    bcrypt.compare(password, foundUser.password, function(err, result) {
+    if(result === true){
       res.render("secrets")
-    }else{
-      console.log(err);
     }
+  });
   }else{
     console.log(err);
   }
