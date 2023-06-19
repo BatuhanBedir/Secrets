@@ -48,20 +48,24 @@ const User = new mongoose.model("User",userSchema);
 
 passport.use(User.createStrategy());
 
-passport.serializeUser(function(user,done){
-  done(null,user.id);
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
 });
-passport.deserializeUser(function(id,done){
-  User.findById(id,function(err,user){
-    done(err,user)
-  });
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id)
+    .then(function(user) {
+      done(null, user);
+    })
+    .catch(function(err) {
+      done(err, null);
+    });
 });
 
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
   clientSecret: process.env.CLIENT_SECRET,
-  callbackURL: "https://localhost:3000/auth/google/secrets",
-  userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
+  callbackURL: "http://localhost:3000/auth/google/secrets",
 },
 function(accessToken, refreshToken, profile, cb) {
   console.log(profile);
@@ -124,19 +128,20 @@ app.post("/register", async function(req, res) {
 app.post("/login", function(req, res, next) {
   passport.authenticate("local", function(err, user, info) {
     if (err) {
-      return res.redirect("/register");
+      return next(err); 
     }
     if (!user) {
-      return res.redirect("/register");
+      return res.redirect("/login");
     }
     req.logIn(user, function(err) {
       if (err) {
-        return res.redirect("/register");
+        return next(err); 
       }
       return res.render("secrets");
     });
   })(req, res, next);
 });
+
 
 
 app.listen(3000,function(){
